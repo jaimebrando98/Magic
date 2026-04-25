@@ -1,0 +1,139 @@
+[
+  {
+    "id": "movie1",
+    "title": "El Viaje Infinito",
+    "year": 2023,
+    "cover": "https://via.placeholder.com/300x450.png?text=Poster",
+    "type": "movie",
+    "stream": "https://ejemplo.com/movies/movie1/master.m3u8",
+    "audio": [
+      { "label": "Español", "url": "https://ejemplo.com/movies/movie1/es.m3u8" },
+      { "label": "Inglés", "url": "https://ejemplo.com/movies/movie1/en.m3u8" }
+    ],
+    "subtitles": [
+      { "label": "Español", "url": "https://ejemplo.com/movies/movie1/es.vtt" },
+      { "label": "Inglés", "url": "https://ejemplo.com/movies/movie1/en.vtt" }
+    ],
+    "qualities": ["auto", "1080p", "720p", "480p"]
+  }
+]
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MagisTV Web</title>
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header">
+    <h1>🎬 MagisTV Web</h1>
+    <p>Solo Series y Películas | Uso Personal</p>
+  </header>
+
+  <main id="catalog" class="catalog"></main>
+
+  <!-- Modal Reproductor -->
+  <div id="player-modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <div id="player-container"></div>
+      <div class="controls-bar">
+        <select id="quality-select"></select>
+        <select id="audio-select"></select>
+        <select id="subtitle-select"></select>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="script.js"></script>
+</body>
+</html>
+
+:root {
+  --bg: #0f0f0f;
+  --card-bg: #1a1a1a;
+  --text: #e0e0e0;
+  --accent: #e50914;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+  padding: 20px;
+}
+.header { text-align: center; margin-bottom: 30px; }
+.header h1 { font-size: 2rem; color: var(--accent); }
+.catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+.card {
+  background: var(--card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.card:hover { transform: scale(1.03); }
+.card img { width: 100%; height: 300px; object-fit: cover; }
+.card-info { padding: 10px; }
+.card-info h3 { font-size: 1rem; margin-bottom: 5px; }
+.card-info p { font-size: 0.8rem; color: #888; }
+.modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 1000;
+}
+.hidden { display: none; }
+.modal-content {
+  background: #111;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%; max-width: 900px;
+  position: relative;
+}
+.close-modal {
+  position: absolute; top: 10px; right: 15px;
+  font-size: 1.5rem; cursor: pointer;
+}
+.controls-bar {
+  margin-top: 10px;
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.controls-bar select {
+  flex: 1; min-width: 120px;
+  padding: 8px; background: #222; color: #fff;
+  border: 1px solid #444; border-radius: 4px;
+}
+.plyr { margin-bottom: 10px; }
+
+// Cargar catálogo
+let movies = [];
+let currentMovie = null;
+let player = null;
+let hls = null;
+
+fetch('catalog.json')
+  .then(res => res.json())
+  .then(data => {
+    movies = data;
+    renderCatalog();
+  });
+
+function renderCatalog() {
+  const catalog = document.getElementById('catalog');
+  catalog.innerHTML = '';
+  movies.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <img src="${m.cover}" alt="${m.title}">
+      <div class="card-info">
